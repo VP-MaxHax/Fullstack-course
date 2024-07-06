@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import axios from 'axios'
+import jsonHandler from '/src/components/jsonhandler.jsx';
 
 const Filter = ({ nameFilter, handleFilterChange }) => {
   return (
@@ -37,7 +37,16 @@ const PersonForm = ({ addName, newName, handleNameChange, newNumber, handleNumbe
 const Persons = ({ persons, nameFilter }) => {
   return (
     <ul>
-      {persons.filter(person => person.name.toLowerCase().includes(nameFilter.toLowerCase())).map(person => <li key={person.name}>{person.name} {person.number}</li>)}
+      {persons.filter(person => 
+        person.name.toLowerCase()
+        .includes(nameFilter.toLowerCase()))
+        .map(person => 
+          <li key={person.id}>{person.name} {person.number}
+            <button onClick={() => 
+              jsonHandler.deletePerson(person.id, person.name)
+              }>Delete</button>
+          </li>
+        )}
     </ul>
   )
 }
@@ -52,10 +61,10 @@ const App = () => {
   const [nameFilter, setFilter] = useState('')
 
   useEffect(() => {
-    axios
-      .get('http://localhost:3001/persons')
-      .then(response => {
-        setPersons(response.data)
+    jsonHandler
+      .getAll()
+      .then(initialPersons => {
+        setPersons(initialPersons)
       })
   }, [])
 
@@ -63,15 +72,29 @@ const App = () => {
     event.preventDefault()
     const nameExists = persons.some(person => person.name === newName);
     if (nameExists) {
-      alert(`${newName} is already added to phonebook`);
+      if (window.confirm(`${newName} is already added to phonebook, replace the old number with a new one?`)) {
+        const person = persons.find(person => person.name === newName);
+        const changedPerson = { ...person, number: newNumber }
+        jsonHandler
+          .update(person.id, changedPerson)
+          .then(returnedPerson => {
+            setPersons(persons.map(person => person.id !== returnedPerson.id ? person : returnedPerson))
+            setNewName('')
+            setNewNumber('')
+          })
+      }
     } else {
       const nameObject = {
         name: newName,
         number: newNumber
       }
-      setPersons(persons.concat(nameObject))
-      setNewName('')
-      setNewNumber('')
+      jsonHandler
+        .create(nameObject)
+        .then(returnedName => {
+          setPersons(persons.concat(returnedName))
+          setNewName('')
+          setNewNumber('')
+        })
     }
   }
 
