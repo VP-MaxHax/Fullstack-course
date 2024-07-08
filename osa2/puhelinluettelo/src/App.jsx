@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import jsonHandler from '/src/components/jsonhandler.jsx';
+import axios from 'axios'
 
 const Filter = ({ nameFilter, handleFilterChange }) => {
   return (
@@ -34,20 +35,27 @@ const PersonForm = ({ addName, newName, handleNameChange, newNumber, handleNumbe
   )
 }
 
-const Persons = ({ persons, nameFilter }) => {
+const ErrorMsg = ({ message }) => {
+  if (message === null) {
+    return null
+  }
+
   return (
-    <ul>
-      {persons.filter(person => 
-        person.name.toLowerCase()
-        .includes(nameFilter.toLowerCase()))
-        .map(person => 
-          <li key={person.id}>{person.name} {person.number}
-            <button onClick={() => 
-              jsonHandler.deletePerson(person.id, person.name)
-              }>Delete</button>
-          </li>
-        )}
-    </ul>
+    <div className='error'>
+      {message}
+    </div>
+  )
+}
+
+const SuccessMsg = ({ message }) => {
+  if (message === null) {
+    return null
+  }
+
+  return (
+    <div className='success'>
+      {message}
+    </div>
   )
 }
 
@@ -60,6 +68,10 @@ const App = () => {
 
   const [nameFilter, setFilter] = useState('')
 
+  const [errorMessage, setErrorMessage] = useState(null)
+
+  const [successMessage, setSuccessMessage] = useState(null)
+
   useEffect(() => {
     jsonHandler
       .getAll()
@@ -67,6 +79,44 @@ const App = () => {
         setPersons(initialPersons)
       })
   }, [])
+
+  const Persons = ({ persons, nameFilter }) => {
+    return (
+      <ul>
+        {persons.filter(person => 
+          person.name.toLowerCase()
+          .includes(nameFilter.toLowerCase()))
+          .map(person => 
+            <li key={person.id}>{person.name} {person.number}
+              <button onClick={() => {
+                console.log(deletePerson(person.id, person.name))
+                }
+                }>Delete</button>
+            </li>
+          )}
+      </ul>
+    )
+  }
+
+  const deletePerson = (id, name) => {
+    if (window.confirm(`Delete ${name}?`)) {
+        axios
+        .delete(`http://localhost:3001/persons/${id}`)
+        .then(response => {
+            console.log(response)
+            setPersons(persons.filter(person => person.id !== id))
+            setSuccessMessage(`Deleted ${name}`)
+        })
+        .catch(error => {
+            console.log(error)
+            setErrorMessage(`Information of ${name} has already been removed from server`)
+            setTimeout(() => {
+                setErrorMessage(null)
+            }, 5000)
+            setPersons(persons.filter(person => person.id !== id))
+        })
+    }
+}
 
   const addName = (event) => {
     event.preventDefault()
@@ -81,7 +131,18 @@ const App = () => {
             setPersons(persons.map(person => person.id !== returnedPerson.id ? person : returnedPerson))
             setNewName('')
             setNewNumber('')
+            setSuccessMessage(`Changed ${newName} number`)
+            setTimeout(() => {
+              setSuccessMessage(null)
+            }, 5000)
           })
+        .catch(error => {
+          console.log(error)
+          setErrorMessage(`Information of ${newName} has already been removed from server`)
+          setTimeout(() => {
+            setErrorMessage(null)
+          }, 5000)
+        })
       }
     } else {
       const nameObject = {
@@ -95,6 +156,10 @@ const App = () => {
           setNewName('')
           setNewNumber('')
         })
+      setSuccessMessage(`Added ${newName}`)
+      setTimeout(() => {
+        setSuccessMessage(null)
+      }, 5000)
     }
   }
 
@@ -118,6 +183,10 @@ const App = () => {
   return (
     <div>
       <h2>Phonebook</h2>
+
+      <ErrorMsg message={errorMessage} />
+
+      <SuccessMsg message={successMessage} />
       
       <Filter nameFilter={nameFilter} handleFilterChange={handleFilterChange} />
 
